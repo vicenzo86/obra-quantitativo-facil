@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Laticrete colors
+				laticrete: {
+					blue: '#005baa',
+					darkblue: '#003c71',
+					gray: '#f2f2f2',
+					darkgray: '#333333',
+					red: '#e31837',
 				}
 			},
 			borderRadius: {
@@ -89,6 +98,9 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out'
+			},
+			fontFamily: {
+				laticrete: ['Roboto', 'sans-serif'],
 			}
 		}
 	},
