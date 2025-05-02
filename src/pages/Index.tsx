@@ -26,7 +26,7 @@ const Index = () => {
       <Navigation />
       
       <div className="laticrete-content">
-        <h2 className="text-xl font-bold text-laticrete-darkblue mb-4">Catálogo de Produtos</h2>
+        <h2 className="text-xl font-bold text-laticrete-darkblue mb-4">Produtos</h2>
         
         <div className="mb-4 relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />

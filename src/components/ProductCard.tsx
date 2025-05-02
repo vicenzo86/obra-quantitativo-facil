@@ -15,7 +15,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       className="laticrete-card cursor-pointer"
       onClick={() => navigate(`/produto/${product.id}`)}
     >
-      <div className="flex items-center mb-2">
+      <div className="flex items-center">
         <img 
           src={product.imageUrl} 
           alt={product.name} 
@@ -26,7 +26,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <p className="text-sm text-gray-600">{product.category}</p>
         </div>
       </div>
-      <p className="text-sm">{product.description}</p>
     </div>
   );
 };
