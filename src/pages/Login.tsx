@@ -1,5 +1,5 @@
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,12 +7,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { SupabaseContext } from '@/App';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Facebook, Linkedin } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Facebook, Linkedin } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -38,7 +36,7 @@ const Login = () => {
   const { supabase, user } = useContext(SupabaseContext);
   
   // Se já estiver autenticado, redireciona para a página inicial
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) {
       navigate('/');
     }

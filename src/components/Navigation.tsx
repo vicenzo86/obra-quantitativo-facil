@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { SupabaseContext } from '@/App';
 import { useContext } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, LogIn } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const Navigation: React.FC = () => {
@@ -54,13 +54,21 @@ const Navigation: React.FC = () => {
         </div>
       ))}
       
-      {supabase && user && (
+      {supabase && user ? (
         <div 
           className="laticrete-nav-item flex items-center"
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4 mr-1" />
           Sair
+        </div>
+      ) : (
+        <div 
+          className="laticrete-nav-item flex items-center"
+          onClick={() => navigate('/login')}
+        >
+          <LogIn className="h-4 w-4 mr-1" />
+          Entrar
         </div>
       )}
     </nav>

@@ -13,7 +13,6 @@ import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 import { createClient } from "@supabase/supabase-js";
-import { useAuth } from "./hooks/useAuth";
 
 // Criar contexto para gerenciar o Supabase e autenticação
 export const SupabaseContext = createContext<{
@@ -51,6 +50,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   return <>{children}</>;
+};
+
+// Hook personalizado para simplificar o acesso ao contexto do Supabase
+const useAuth = () => {
+  const { user, loading } = React.useContext(SupabaseContext);
+  return { user, loading };
 };
 
 const App = () => {
