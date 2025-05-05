@@ -11,43 +11,96 @@ import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
+import { createClient } from "@supabase/supabase-js";
+import { useState, useEffect, createContext } from "react";
+
+// Criar contexto para gerenciar o Supabase e autenticação
+export const SupabaseContext = createContext<{
+  supabase: any;
+  user: any;
+  loading: boolean;
+}>({
+  supabase: null,
+  user: null,
+  loading: true
+});
 
 const queryClient = new QueryClient();
 
-// Mock authentication function - will be replaced with Supabase auth later
-const isAuthenticated = () => {
-  // In a real app, check if the user is authenticated
-  // For now, we'll always return true
-  return true;
-};
+// Preparar conexão com Supabase - será configurado quando o usuário fornecer as credenciais
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
-// Protected route wrapper
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Componente ProtectedRoute que verifica autenticação
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  if (!isAuthenticated()) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
+  
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
+  
   return <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <CartProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/produto/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
-            <Route path="/carrinho" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
-            <Route path="/pedidos" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </CartProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// Hook para usar autenticação do Supabase
+const useAuth = () => {
+  const { user, loading } = React.useContext(SupabaseContext);
+  return { user, loading };
+};
+
+const App = () => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Verificar sessão atual
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+      setLoading(false);
+    });
+
+    // Escutar mudanças na autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return (
+    <SupabaseContext.Provider value={{ supabase, user, loading }}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <CartProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/produto/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
+                <Route path="/carrinho" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+                <Route path="/pedidos" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </CartProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </SupabaseContext.Provider>
+  );
+};
 
 export default App;
+export { useAuth };

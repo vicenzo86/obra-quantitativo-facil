@@ -11,20 +11,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useCart } from '@/hooks/useCart';
+import { SupabaseContext } from '@/App';
+import { useContext } from 'react';
+import { Switch } from "@/components/ui/switch"
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart } = useCart();
+  const { supabase } = useContext(SupabaseContext);
   
   const [area, setArea] = useState<string>('');
   const [thickness, setThickness] = useState<string>('');
   const [areaName, setAreaName] = useState<string>('');
   const [calculationResult, setCalculationResult] = useState<any>(null);
+  const [isLinearCalculation, setIsLinearCalculation] = useState<boolean>(false);
+  const [useDefaultThickness, setUseDefaultThickness] = useState<boolean>(true);
   
   const product = id ? getProductById(id) : undefined;
   const consumptionRate = id ? getConsumptionRateByProductId(id) : undefined;
+  
+  // Valores padrão para espessura (mm) por produto
+  const defaultThicknesses: {[key: string]: number} = {
+    "1": 3, // 4237 Aditivo - 3mm padrão
+    "2": 5, // 254 Platinum - 5mm padrão
+    "3": 2, // HYDRO BAN - 2mm padrão
+    "4": 3, // SPECTRALOCK - 3mm padrão
+    "5": 3, // PERMACOLOR - 3mm padrão
+    "6": 5, // LATAPOXY - 5mm padrão
+  };
+  
+  const defaultThickness = id ? defaultThicknesses[id] || 3 : 3;
   
   if (!product) {
     return <div>Produto não encontrado</div>;
@@ -41,14 +59,30 @@ const ProductDetail = () => {
     }
     
     const areaValue = parseFloat(area);
-    let requiredAmount = areaValue * consumptionRate.value;
+    let requiredAmount = 0;
     
-    // If thickness is provided, adjust the calculation
-    if (thickness) {
+    // Cálculo baseado em escolha: m² ou linear
+    if (isLinearCalculation) {
+      // Cálculo para metro linear
+      // Assumimos uma largura padrão de 10cm para aplicação linear
+      const linearWidth = 0.1; // 10cm em metros
+      requiredAmount = areaValue * linearWidth * consumptionRate.value;
+    } else {
+      // Cálculo para m²
+      requiredAmount = areaValue * consumptionRate.value;
+    }
+    
+    // Ajusta pelo fator de espessura se necessário
+    if (!useDefaultThickness && thickness) {
       const thicknessValue = parseFloat(thickness);
       if (!isNaN(thicknessValue)) {
-        requiredAmount = (areaValue * consumptionRate.value * thicknessValue) / 10; // convert mm to cm
+        // Normaliza a espessura pelo padrão
+        const thicknessRatio = thicknessValue / defaultThickness;
+        requiredAmount = requiredAmount * thicknessRatio;
       }
+    } else if (useDefaultThickness) {
+      // Aqui não fazemos ajuste, pois já estamos considerando a espessura padrão
+      // no consumo base
     }
     
     // Packaging estimation (example)
@@ -58,6 +92,8 @@ const ProductDetail = () => {
     const result = {
       productName: product.name,
       area: areaValue,
+      isLinear: isLinearCalculation,
+      thickness: useDefaultThickness ? defaultThickness : parseFloat(thickness || "0"),
       consumptionRate: consumptionRate.value,
       consumptionUnit: consumptionRate.unit,
       requiredAmount,
@@ -66,6 +102,23 @@ const ProductDetail = () => {
     };
     
     setCalculationResult(result);
+    
+    // Sincronizar com Supabase se disponível
+    if (supabase) {
+      try {
+        supabase.from('calculos').insert([{
+          produto_id: product.id,
+          produto_nome: product.name,
+          area: areaValue,
+          espessura: result.thickness,
+          is_linear: isLinearCalculation,
+          quantidade_necessaria: requiredAmount,
+          created_at: new Date()
+        }]);
+      } catch (error) {
+        console.error("Erro ao salvar cálculo:", error);
+      }
+    }
   };
   
   const handleAddToCart = () => {
@@ -101,6 +154,25 @@ const ProductDetail = () => {
       title: "Produto adicionado ao carrinho",
       description: `${calculationResult.packagingAmount} ${calculationResult.packaging} de ${product.name} para a área ${areaName}`,
     });
+    
+    // Sincronizar com Supabase se disponível
+    if (supabase) {
+      try {
+        supabase.from('carrinho').insert([{
+          produto_id: product.id,
+          produto_nome: product.name,
+          quantidade: calculationResult.packagingAmount,
+          area_nome: areaName,
+          area_valor: calculationResult.area,
+          is_linear: calculationResult.isLinear,
+          espessura: calculationResult.thickness,
+          quantidade_total: calculationResult.requiredAmount,
+          created_at: new Date()
+        }]);
+      } catch (error) {
+        console.error("Erro ao adicionar ao carrinho:", error);
+      }
+    }
   };
   
   return (
@@ -204,6 +276,7 @@ const ProductDetail = () => {
                     {consumptionRate.value} {consumptionRate.unit}
                   </p>
                   <p className="text-sm text-gray-600">{consumptionRate.conditions}</p>
+                  <p className="text-sm font-medium mt-2">Espessura padrão recomendada: {defaultThickness}mm</p>
                 </div>
               </div>
             ) : (
@@ -226,29 +299,57 @@ const ProductDetail = () => {
                 />
               </div>
               
+              <div className="flex items-center justify-between space-x-2 p-3 bg-laticrete-gray rounded-md">
+                <div className="text-sm font-medium">Tipo de cálculo:</div>
+                <div className="flex items-center space-x-2">
+                  <span className={!isLinearCalculation ? "font-bold" : ""}>Área (m²)</span>
+                  <Switch
+                    checked={isLinearCalculation}
+                    onCheckedChange={setIsLinearCalculation}
+                  />
+                  <span className={isLinearCalculation ? "font-bold" : ""}>Metro linear</span>
+                </div>
+              </div>
+              
               <div>
-                <Label htmlFor="area">Área (m²)</Label>
+                <Label htmlFor="area">
+                  {isLinearCalculation ? "Comprimento (m)" : "Área (m²)"}
+                </Label>
                 <Input 
                   id="area" 
                   type="number" 
-                  placeholder="Ex: 10" 
+                  placeholder={isLinearCalculation ? "Ex: 5" : "Ex: 10"} 
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
                   className="laticrete-input"
                 />
               </div>
               
-              <div>
-                <Label htmlFor="thickness">Espessura (mm) (opcional)</Label>
-                <Input 
-                  id="thickness" 
-                  type="number" 
-                  placeholder="Ex: 5" 
-                  value={thickness}
-                  onChange={(e) => setThickness(e.target.value)}
-                  className="laticrete-input"
-                />
+              <div className="flex items-center justify-between space-x-2 p-3 bg-laticrete-gray rounded-md">
+                <div className="text-sm font-medium">Espessura:</div>
+                <div className="flex items-center space-x-2">
+                  <span className={useDefaultThickness ? "font-bold" : ""}>Padrão ({defaultThickness}mm)</span>
+                  <Switch
+                    checked={!useDefaultThickness}
+                    onCheckedChange={(checked) => setUseDefaultThickness(!checked)}
+                  />
+                  <span className={!useDefaultThickness ? "font-bold" : ""}>Personalizada</span>
+                </div>
               </div>
+              
+              {!useDefaultThickness && (
+                <div>
+                  <Label htmlFor="thickness">Espessura (mm)</Label>
+                  <Input 
+                    id="thickness" 
+                    type="number" 
+                    placeholder={`Ex: ${defaultThickness}`}
+                    value={thickness}
+                    onChange={(e) => setThickness(e.target.value)}
+                    className="laticrete-input"
+                  />
+                </div>
+              )}
               
               {consumptionRate && (
                 <div className="bg-laticrete-gray p-3 rounded-md">
@@ -275,13 +376,21 @@ const ProductDetail = () => {
                   
                   <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                     <div>
-                      <p className="text-gray-500">Área</p>
-                      <p className="font-bold">{calculationResult.area} m²</p>
+                      <p className="text-gray-500">
+                        {calculationResult.isLinear ? "Comprimento" : "Área"}
+                      </p>
+                      <p className="font-bold">{calculationResult.area} {calculationResult.isLinear ? "m" : "m²"}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Consumo</p>
                       <p className="font-bold">
                         {calculationResult.consumptionRate} {calculationResult.consumptionUnit}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Espessura</p>
+                      <p className="font-bold">
+                        {calculationResult.thickness} mm
                       </p>
                     </div>
                   </div>
