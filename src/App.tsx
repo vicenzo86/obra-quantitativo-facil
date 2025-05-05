@@ -31,7 +31,10 @@ const queryClient = new QueryClient();
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Inicializa o cliente Supabase apenas se as credenciais existirem
+const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
 
 // Componente ProtectedRoute que verifica autenticação
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -41,7 +44,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <div className="flex items-center justify-center h-screen">Carregando...</div>;
   }
   
-  if (!user) {
+  // Se não houver cliente Supabase ou usuário, redireciona para login
+  if (!supabase || !user) {
     return <Navigate to="/login" replace />;
   }
   
@@ -59,6 +63,12 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Verificar se o cliente Supabase foi inicializado
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     // Verificar sessão atual
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
@@ -88,10 +98,19 @@ const App = () => {
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/produto/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
-                <Route path="/carrinho" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
-                <Route path="/pedidos" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+                <Route path="/" element={
+                  // Se não houver Supabase configurado, mostra o Index sem proteção
+                  supabase ? <ProtectedRoute><Index /></ProtectedRoute> : <Index />
+                } />
+                <Route path="/produto/:id" element={
+                  supabase ? <ProtectedRoute><ProductDetail /></ProtectedRoute> : <ProductDetail />
+                } />
+                <Route path="/carrinho" element={
+                  supabase ? <ProtectedRoute><Cart /></ProtectedRoute> : <Cart />
+                } />
+                <Route path="/pedidos" element={
+                  supabase ? <ProtectedRoute><Orders /></ProtectedRoute> : <Orders />
+                } />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

@@ -21,6 +21,15 @@ const Navigation: React.FC = () => {
   ];
   
   const handleLogout = async () => {
+    if (!supabase) {
+      toast({
+        title: "Erro ao fazer logout",
+        description: "Supabase não está configurado.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       await supabase.auth.signOut();
       toast({
@@ -45,7 +54,7 @@ const Navigation: React.FC = () => {
         </div>
       ))}
       
-      {user && (
+      {supabase && user && (
         <div 
           className="laticrete-nav-item flex items-center"
           onClick={handleLogout}
