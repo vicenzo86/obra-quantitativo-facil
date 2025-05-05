@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -13,6 +14,7 @@ import { useCart } from '@/hooks/useCart';
 import { SupabaseContext } from '@/App';
 import { useContext } from 'react';
 import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +44,26 @@ const ProductDetail = () => {
   };
   
   const defaultThickness = id ? defaultThicknesses[id] || 3 : 3;
+  const minThickness = Math.max(1, defaultThickness / 2);
+  const maxThickness = defaultThickness * 2;
+  
+  // Cores relacionado à espessura para visualização
+  const getThicknessColor = (currentThickness: number) => {
+    if (currentThickness < defaultThickness) {
+      return 'bg-blue-100';
+    } else if (currentThickness === defaultThickness) {
+      return 'bg-blue-200';
+    } else if (currentThickness <= defaultThickness * 1.5) {
+      return 'bg-blue-300';
+    } else {
+      return 'bg-blue-400';
+    }
+  };
+
+  // Função para formatar número com separador de milhares
+  const formatNumber = (num: number): string => {
+    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
   
   if (!product) {
     return <div>Produto não encontrado</div>;
@@ -71,17 +93,12 @@ const ProductDetail = () => {
       requiredAmount = areaValue * consumptionRate.value;
     }
     
-    // Ajusta pelo fator de espessura se necessário
-    if (!useDefaultThickness && thickness) {
-      const thicknessValue = parseFloat(thickness);
-      if (!isNaN(thicknessValue)) {
-        // Normaliza a espessura pelo padrão
-        const thicknessRatio = thicknessValue / defaultThickness;
-        requiredAmount = requiredAmount * thicknessRatio;
-      }
-    } else if (useDefaultThickness) {
-      // Aqui não fazemos ajuste, pois já estamos considerando a espessura padrão
-      // no consumo base
+    // Ajusta pelo fator de espessura - SEMPRE APLICADO DIRETAMENTE PROPORCIONAL
+    const thicknessValue = useDefaultThickness ? defaultThickness : parseFloat(thickness || "0");
+    if (!isNaN(thicknessValue)) {
+      // Ajuste diretamente proporcional à espessura
+      const thicknessRatio = thicknessValue / defaultThickness;
+      requiredAmount = requiredAmount * thicknessRatio;
     }
     
     // Packaging estimation (example)
@@ -92,7 +109,7 @@ const ProductDetail = () => {
       productName: product.name,
       area: areaValue,
       isLinear: isLinearCalculation,
-      thickness: useDefaultThickness ? defaultThickness : parseFloat(thickness || "0"),
+      thickness: thicknessValue,
       consumptionRate: consumptionRate.value,
       consumptionUnit: consumptionRate.unit,
       requiredAmount,
@@ -208,7 +225,7 @@ const ProductDetail = () => {
           <p className="mb-4">{product.description}</p>
         </div>
         
-        <Tabs defaultValue="technical" className="w-full">
+        <Tabs defaultValue="calculator" className="w-full">
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="technical" className="flex items-center">
               <FileText className="h-4 w-4 mr-2" />
@@ -277,6 +294,38 @@ const ProductDetail = () => {
                   <p className="text-sm text-gray-600">{consumptionRate.conditions}</p>
                   <p className="text-sm font-medium mt-2">Espessura padrão recomendada: {defaultThickness}mm</p>
                 </div>
+
+                <div className="mt-6 border-t pt-4">
+                  <h3 className="font-bold mb-3">Variação do Consumo por Espessura:</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    O consumo é diretamente proporcional à espessura aplicada. Quanto maior a espessura, maior será o consumo do material.
+                  </p>
+                  
+                  <div className="space-y-6">
+                    {[0.5, 1, 1.5, 2].map(ratio => {
+                      const currentThickness = defaultThickness * ratio;
+                      const currentConsumption = consumptionRate.value * ratio;
+                      const thicknessColor = getThicknessColor(currentThickness);
+                      
+                      return (
+                        <div key={ratio} className={`p-3 rounded-lg ${thicknessColor} flex justify-between items-center`}>
+                          <div>
+                            <p className="font-medium">Espessura: {currentThickness}mm</p>
+                            <p className="text-xs text-gray-700">
+                              {ratio < 1 ? "Menor" : ratio > 1 ? "Maior" : "Igual"} que o padrão
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold">{currentConsumption} {consumptionRate.unit}</p>
+                            <p className="text-xs text-gray-700">
+                              {ratio < 1 ? "↓" : ratio > 1 ? "↑" : "="} {(ratio * 100).toFixed(0)}% do consumo padrão
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             ) : (
               <p>Não há informações de consumo para este produto.</p>
@@ -324,31 +373,68 @@ const ProductDetail = () => {
                 />
               </div>
               
-              <div className="flex items-center justify-between space-x-2 p-3 bg-laticrete-gray rounded-md">
-                <div className="text-sm font-medium">Espessura:</div>
-                <div className="flex items-center space-x-2">
-                  <span className={useDefaultThickness ? "font-bold" : ""}>Padrão ({defaultThickness}mm)</span>
-                  <Switch
-                    checked={!useDefaultThickness}
-                    onCheckedChange={(checked) => setUseDefaultThickness(!checked)}
-                  />
-                  <span className={!useDefaultThickness ? "font-bold" : ""}>Personalizada</span>
+              <div className="border p-4 rounded-md">
+                <h4 className="font-medium mb-3">Espessura de Aplicação</h4>
+                
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-500">A espessura afeta diretamente o consumo</span>
+                  <div>
+                    <Switch
+                      checked={!useDefaultThickness}
+                      onCheckedChange={(checked) => setUseDefaultThickness(!checked)}
+                    />
+                    <span className="ml-2 text-sm">{useDefaultThickness ? "Padrão" : "Personalizada"}</span>
+                  </div>
+                </div>
+                
+                {useDefaultThickness ? (
+                  <div className="bg-blue-50 p-3 rounded border border-blue-100">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-medium">Espessura padrão</p>
+                      <p className="font-bold text-blue-800">{defaultThickness} mm</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between">
+                        <span className="text-sm">{minThickness} mm</span>
+                        <span className="text-sm font-medium">
+                          {thickness || defaultThickness} mm
+                        </span>
+                        <span className="text-sm">{maxThickness} mm</span>
+                      </div>
+                      <Slider
+                        defaultValue={[defaultThickness]}
+                        min={minThickness}
+                        max={maxThickness}
+                        step={0.5}
+                        value={[parseFloat(thickness || defaultThickness.toString())]}
+                        onValueChange={(value) => setThickness(value[0].toString())}
+                        className="mt-2"
+                      />
+                    </div>
+                    
+                    <div className="bg-blue-50 p-2 rounded text-xs text-center">
+                      {parseFloat(thickness || defaultThickness.toString()) < defaultThickness ? (
+                        <p>Espessura menor que o padrão recomendado ({defaultThickness}mm)</p>
+                      ) : parseFloat(thickness || defaultThickness.toString()) > defaultThickness ? (
+                        <p>Espessura maior que o padrão recomendado ({defaultThickness}mm)</p>
+                      ) : (
+                        <p>Espessura igual ao padrão recomendado ({defaultThickness}mm)</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-4">
+                  <div className={`p-3 rounded-lg ${getThicknessColor(parseFloat(thickness || defaultThickness.toString()))}`}>
+                    <p className="text-sm text-center">
+                      <strong>Atenção:</strong> O consumo aumenta proporcionalmente à espessura.
+                    </p>
+                  </div>
                 </div>
               </div>
-              
-              {!useDefaultThickness && (
-                <div>
-                  <Label htmlFor="thickness">Espessura (mm)</Label>
-                  <Input 
-                    id="thickness" 
-                    type="number" 
-                    placeholder={`Ex: ${defaultThickness}`}
-                    value={thickness}
-                    onChange={(e) => setThickness(e.target.value)}
-                    className="laticrete-input"
-                  />
-                </div>
-              )}
               
               {consumptionRate && (
                 <div className="bg-laticrete-gray p-3 rounded-md">
@@ -381,7 +467,7 @@ const ProductDetail = () => {
                       <p className="font-bold">{calculationResult.area} {calculationResult.isLinear ? "m" : "m²"}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Consumo</p>
+                      <p className="text-gray-500">Consumo (padrão)</p>
                       <p className="font-bold">
                         {calculationResult.consumptionRate} {calculationResult.consumptionUnit}
                       </p>
@@ -389,7 +475,19 @@ const ProductDetail = () => {
                     <div>
                       <p className="text-gray-500">Espessura</p>
                       <p className="font-bold">
-                        {calculationResult.thickness} mm
+                        {calculationResult.thickness} mm 
+                        {calculationResult.thickness !== defaultThickness && (
+                          <span className="text-xs ml-1 text-blue-600">
+                            ({calculationResult.thickness > defaultThickness ? "+" : ""}
+                            {(((calculationResult.thickness / defaultThickness) - 1) * 100).toFixed(0)}%)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Fator de ajuste</p>
+                      <p className="font-bold">
+                        {(calculationResult.thickness / defaultThickness).toFixed(2)}x
                       </p>
                     </div>
                   </div>
@@ -398,7 +496,7 @@ const ProductDetail = () => {
                     <div className="flex justify-between items-center">
                       <p>Quantidade necessária:</p>
                       <p className="font-bold text-laticrete-blue text-lg">
-                        {calculationResult.requiredAmount.toFixed(2)} kg
+                        {formatNumber(calculationResult.requiredAmount)} kg
                       </p>
                     </div>
                     

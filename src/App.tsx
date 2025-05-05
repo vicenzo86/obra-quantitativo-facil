@@ -13,6 +13,7 @@ import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 import { createClient } from "@supabase/supabase-js";
+import { useAuth } from "./hooks/useAuth";
 
 // Criar contexto para gerenciar o Supabase e autenticação
 export const SupabaseContext = createContext<{
@@ -50,12 +51,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   return <>{children}</>;
-};
-
-// Hook para usar autenticação do Supabase
-export const useAuth = () => {
-  const { user, loading } = React.useContext(SupabaseContext);
-  return { user, loading };
 };
 
 const App = () => {
@@ -122,4 +117,3 @@ const App = () => {
 };
 
 export default App;
-// Removed the duplicate export { useAuth } that was here

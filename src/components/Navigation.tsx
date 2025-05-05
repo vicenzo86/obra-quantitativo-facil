@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/App';
+import { useAuth } from '@/hooks/useAuth';
 import { SupabaseContext } from '@/App';
 import { useContext } from 'react';
 import { LogOut } from 'lucide-react';
