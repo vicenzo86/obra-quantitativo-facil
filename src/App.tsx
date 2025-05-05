@@ -1,4 +1,4 @@
-
+import React, { useState, useEffect, createContext } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,7 +12,6 @@ import Cart from "./pages/Cart";
 import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 import { createClient } from "@supabase/supabase-js";
-import { useState, useEffect, createContext } from "react";
 
 // Criar contexto para gerenciar o Supabase e autenticação
 export const SupabaseContext = createContext<{
@@ -53,7 +52,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Hook para usar autenticação do Supabase
-const useAuth = () => {
+export const useAuth = () => {
   const { user, loading } = React.useContext(SupabaseContext);
   return { user, loading };
 };
