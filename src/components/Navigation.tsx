@@ -41,6 +41,11 @@ const Navigation: React.FC = () => {
       console.error('Erro ao fazer logout:', error);
     }
   };
+
+  const handleNavigation = (path: string) => {
+    // Navigation happens even without Supabase login
+    navigate(path);
+  };
   
   return (
     <nav className="laticrete-nav">
@@ -48,7 +53,7 @@ const Navigation: React.FC = () => {
         <div 
           key={item.path}
           className={`laticrete-nav-item ${location.pathname === item.path ? 'active' : ''}`}
-          onClick={() => navigate(item.path)}
+          onClick={() => handleNavigation(item.path)}
         >
           {item.name}
         </div>

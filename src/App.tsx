@@ -97,22 +97,12 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <Routes>
-                {/* Mudança para tornar a página de login como rota padrão */}
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/produtos" element={
-                  // Se não houver Supabase configurado, mostra o Index sem proteção
-                  supabase ? <ProtectedRoute><Index /></ProtectedRoute> : <Index />
-                } />
-                <Route path="/produto/:id" element={
-                  supabase ? <ProtectedRoute><ProductDetail /></ProtectedRoute> : <ProductDetail />
-                } />
-                <Route path="/carrinho" element={
-                  supabase ? <ProtectedRoute><Cart /></ProtectedRoute> : <Cart />
-                } />
-                <Route path="/pedidos" element={
-                  supabase ? <ProtectedRoute><Orders /></ProtectedRoute> : <Orders />
-                } />
+                <Route path="/produtos" element={<Index />} />
+                <Route path="/produto/:id" element={<ProductDetail />} />
+                <Route path="/carrinho" element={<Cart />} />
+                <Route path="/pedidos" element={<Orders />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
