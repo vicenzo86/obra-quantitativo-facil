@@ -97,8 +97,10 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <Routes>
+                {/* Mudança para tornar a página de login como rota padrão */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/" element={
+                <Route path="/produtos" element={
                   // Se não houver Supabase configurado, mostra o Index sem proteção
                   supabase ? <ProtectedRoute><Index /></ProtectedRoute> : <Index />
                 } />

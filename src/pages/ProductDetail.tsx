@@ -13,8 +13,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { SupabaseContext } from '@/App';
 import { useContext } from 'react';
-import { Switch } from "@/components/ui/switch"
-import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,45 +24,28 @@ const ProductDetail = () => {
   const { supabase } = useContext(SupabaseContext);
   
   const [area, setArea] = useState<string>('');
-  const [thickness, setThickness] = useState<string>('');
+  const [customConsumption, setCustomConsumption] = useState<string>('');
   const [areaName, setAreaName] = useState<string>('');
   const [calculationResult, setCalculationResult] = useState<any>(null);
   const [isLinearCalculation, setIsLinearCalculation] = useState<boolean>(false);
-  const [useDefaultThickness, setUseDefaultThickness] = useState<boolean>(true);
+  const [useDefaultConsumption, setUseDefaultConsumption] = useState<boolean>(true);
   
   const product = id ? getProductById(id) : undefined;
   const consumptionRate = id ? getConsumptionRateByProductId(id) : undefined;
   
-  // Valores padrão para espessura (mm) por produto
-  const defaultThicknesses: {[key: string]: number} = {
-    "1": 3, // 4237 Aditivo - 3mm padrão
-    "2": 5, // 254 Platinum - 5mm padrão
-    "3": 2, // HYDRO BAN - 2mm padrão
-    "4": 3, // SPECTRALOCK - 3mm padrão
-    "5": 3, // PERMACOLOR - 3mm padrão
-    "6": 5, // LATAPOXY - 5mm padrão
-  };
-  
-  const defaultThickness = id ? defaultThicknesses[id] || 3 : 3;
-  const minThickness = Math.max(1, defaultThickness / 2);
-  const maxThickness = defaultThickness * 2;
-  
-  // Cores relacionado à espessura para visualização
-  const getThicknessColor = (currentThickness: number) => {
-    if (currentThickness < defaultThickness) {
-      return 'bg-blue-100';
-    } else if (currentThickness === defaultThickness) {
-      return 'bg-blue-200';
-    } else if (currentThickness <= defaultThickness * 1.5) {
-      return 'bg-blue-300';
-    } else {
-      return 'bg-blue-400';
-    }
-  };
-
-  // Função para formatar número com separador de milhares
+  // Formatador de números para exibição
   const formatNumber = (num: number): string => {
     return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  
+  // Função para calcular com base no consumo ou rendimento
+  const calculateConsumption = (area: number, consumption: number, isLinear: boolean): number => {
+    if (isLinear) {
+      // Para cálculo linear, assumimos uma largura padrão de 10cm
+      const linearWidth = 0.1; // 10cm em metros
+      return area * linearWidth * consumption;
+    }
+    return area * consumption;
   };
   
   if (!product) {
@@ -80,28 +63,16 @@ const ProductDetail = () => {
     }
     
     const areaValue = parseFloat(area);
-    let requiredAmount = 0;
     
-    // Cálculo baseado em escolha: m² ou linear
-    if (isLinearCalculation) {
-      // Cálculo para metro linear
-      // Assumimos uma largura padrão de 10cm para aplicação linear
-      const linearWidth = 0.1; // 10cm em metros
-      requiredAmount = areaValue * linearWidth * consumptionRate.value;
-    } else {
-      // Cálculo para m²
-      requiredAmount = areaValue * consumptionRate.value;
-    }
+    // Definir o consumo a ser usado: padrão ou personalizado
+    const consumptionValue = useDefaultConsumption
+      ? consumptionRate.value
+      : parseFloat(customConsumption || consumptionRate.value.toString());
     
-    // Ajusta pelo fator de espessura - SEMPRE APLICADO DIRETAMENTE PROPORCIONAL
-    const thicknessValue = useDefaultThickness ? defaultThickness : parseFloat(thickness || "0");
-    if (!isNaN(thicknessValue)) {
-      // Ajuste diretamente proporcional à espessura
-      const thicknessRatio = thicknessValue / defaultThickness;
-      requiredAmount = requiredAmount * thicknessRatio;
-    }
+    // Calcular quantidade necessária
+    const requiredAmount = calculateConsumption(areaValue, consumptionValue, isLinearCalculation);
     
-    // Packaging estimation (example)
+    // Estimar embalagem (exemplo)
     const packaging = "Saco 20kg";
     const packagingAmount = Math.ceil(requiredAmount / 20);
     
@@ -109,9 +80,9 @@ const ProductDetail = () => {
       productName: product.name,
       area: areaValue,
       isLinear: isLinearCalculation,
-      thickness: thicknessValue,
-      consumptionRate: consumptionRate.value,
+      consumptionRate: consumptionValue,
       consumptionUnit: consumptionRate.unit,
+      defaultConsumption: consumptionRate.value,
       requiredAmount,
       packaging,
       packagingAmount
@@ -126,7 +97,7 @@ const ProductDetail = () => {
           produto_id: product.id,
           produto_nome: product.name,
           area: areaValue,
-          espessura: result.thickness,
+          consumo: consumptionValue,
           is_linear: isLinearCalculation,
           quantidade_necessaria: requiredAmount,
           created_at: new Date()
@@ -181,7 +152,7 @@ const ProductDetail = () => {
           area_nome: areaName,
           area_valor: calculationResult.area,
           is_linear: calculationResult.isLinear,
-          espessura: calculationResult.thickness,
+          consumo: calculationResult.consumptionRate,
           quantidade_total: calculationResult.requiredAmount,
           created_at: new Date()
         }]);
@@ -189,6 +160,18 @@ const ProductDetail = () => {
         console.error("Erro ao adicionar ao carrinho:", error);
       }
     }
+  };
+  
+  // Funções para formatação e apresentação
+  const getConsumptionModeText = () => {
+    return consumptionRate?.unit.includes('kg/') ? 'Consumo' : 'Rendimento';
+  };
+  
+  const getConsumptionVariationColor = (value: number) => {
+    const defaultValue = consumptionRate?.value || 0;
+    if (value < defaultValue * 0.9) return 'bg-green-100';
+    if (value > defaultValue * 1.1) return 'bg-red-100';
+    return 'bg-blue-100';
   };
   
   return (
@@ -286,31 +269,29 @@ const ProductDetail = () => {
           <TabsContent value="consumption" className="laticrete-card">
             {consumptionRate ? (
               <div>
-                <h3 className="font-bold mb-3">Consumo Médio:</h3>
+                <h3 className="font-bold mb-3">{getConsumptionModeText()} Médio:</h3>
                 <div className="bg-laticrete-gray p-4 rounded-lg mb-4">
                   <p className="font-bold text-laticrete-blue text-lg">
                     {consumptionRate.value} {consumptionRate.unit}
                   </p>
                   <p className="text-sm text-gray-600">{consumptionRate.conditions}</p>
-                  <p className="text-sm font-medium mt-2">Espessura padrão recomendada: {defaultThickness}mm</p>
                 </div>
 
                 <div className="mt-6 border-t pt-4">
-                  <h3 className="font-bold mb-3">Variação do Consumo por Espessura:</h3>
+                  <h3 className="font-bold mb-3">Variação do {getConsumptionModeText()}:</h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    O consumo é diretamente proporcional à espessura aplicada. Quanto maior a espessura, maior será o consumo do material.
+                    O {getConsumptionModeText().toLowerCase()} pode variar de acordo com o tipo de substrato, condições de aplicação e ferramentas utilizadas.
                   </p>
                   
                   <div className="space-y-6">
-                    {[0.5, 1, 1.5, 2].map(ratio => {
-                      const currentThickness = defaultThickness * ratio;
+                    {[0.8, 1, 1.2, 1.4].map(ratio => {
                       const currentConsumption = consumptionRate.value * ratio;
-                      const thicknessColor = getThicknessColor(currentThickness);
+                      const consumptionColor = getConsumptionVariationColor(currentConsumption);
                       
                       return (
-                        <div key={ratio} className={`p-3 rounded-lg ${thicknessColor} flex justify-between items-center`}>
+                        <div key={ratio} className={`p-3 rounded-lg ${consumptionColor} flex justify-between items-center`}>
                           <div>
-                            <p className="font-medium">Espessura: {currentThickness}mm</p>
+                            <p className="font-medium">{getConsumptionModeText()} Ajustado:</p>
                             <p className="text-xs text-gray-700">
                               {ratio < 1 ? "Menor" : ratio > 1 ? "Maior" : "Igual"} que o padrão
                             </p>
@@ -318,7 +299,7 @@ const ProductDetail = () => {
                           <div className="text-right">
                             <p className="font-bold">{currentConsumption} {consumptionRate.unit}</p>
                             <p className="text-xs text-gray-700">
-                              {ratio < 1 ? "↓" : ratio > 1 ? "↑" : "="} {(ratio * 100).toFixed(0)}% do consumo padrão
+                              {ratio < 1 ? "↓" : ratio > 1 ? "↑" : "="} {(ratio * 100).toFixed(0)}% do padrão
                             </p>
                           </div>
                         </div>
@@ -374,63 +355,63 @@ const ProductDetail = () => {
               </div>
               
               <div className="border p-4 rounded-md">
-                <h4 className="font-medium mb-3">Espessura de Aplicação</h4>
+                <h4 className="font-medium mb-3">{getConsumptionModeText()} do Produto</h4>
                 
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-gray-500">A espessura afeta diretamente o consumo</span>
+                  <span className="text-sm text-gray-500">O {getConsumptionModeText().toLowerCase()} afeta diretamente o resultado</span>
                   <div>
                     <Switch
-                      checked={!useDefaultThickness}
-                      onCheckedChange={(checked) => setUseDefaultThickness(!checked)}
+                      checked={!useDefaultConsumption}
+                      onCheckedChange={(checked) => setUseDefaultConsumption(!checked)}
                     />
-                    <span className="ml-2 text-sm">{useDefaultThickness ? "Padrão" : "Personalizada"}</span>
+                    <span className="ml-2 text-sm">{useDefaultConsumption ? "Padrão" : "Personalizado"}</span>
                   </div>
                 </div>
                 
-                {useDefaultThickness ? (
+                {useDefaultConsumption ? (
                   <div className="bg-blue-50 p-3 rounded border border-blue-100">
                     <div className="flex justify-between items-center">
-                      <p className="text-sm font-medium">Espessura padrão</p>
-                      <p className="font-bold text-blue-800">{defaultThickness} mm</p>
+                      <p className="text-sm font-medium">{getConsumptionModeText()} padrão</p>
+                      <p className="font-bold text-blue-800">
+                        {consumptionRate?.value} {consumptionRate?.unit}
+                      </p>
                     </div>
+                    <p className="text-xs text-gray-600 mt-1">{consumptionRate?.conditions}</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">{minThickness} mm</span>
-                        <span className="text-sm font-medium">
-                          {thickness || defaultThickness} mm
-                        </span>
-                        <span className="text-sm">{maxThickness} mm</span>
-                      </div>
-                      <Slider
-                        defaultValue={[defaultThickness]}
-                        min={minThickness}
-                        max={maxThickness}
-                        step={0.5}
-                        value={[parseFloat(thickness || defaultThickness.toString())]}
-                        onValueChange={(value) => setThickness(value[0].toString())}
-                        className="mt-2"
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Label htmlFor="customConsumption">{getConsumptionModeText()} personalizado:</Label>
+                      <Input
+                        id="customConsumption"
+                        type="number"
+                        step="0.1"
+                        placeholder={consumptionRate?.value.toString()}
+                        value={customConsumption}
+                        onChange={(e) => setCustomConsumption(e.target.value)}
+                        className="w-24"
                       />
+                      <span>{consumptionRate?.unit}</span>
                     </div>
                     
-                    <div className="bg-blue-50 p-2 rounded text-xs text-center">
-                      {parseFloat(thickness || defaultThickness.toString()) < defaultThickness ? (
-                        <p>Espessura menor que o padrão recomendado ({defaultThickness}mm)</p>
-                      ) : parseFloat(thickness || defaultThickness.toString()) > defaultThickness ? (
-                        <p>Espessura maior que o padrão recomendado ({defaultThickness}mm)</p>
+                    <div className="bg-blue-50 p-2 rounded text-xs">
+                      {parseFloat(customConsumption || '0') === 0 ? (
+                        <p className="text-red-500">Por favor, informe um valor válido</p>
+                      ) : parseFloat(customConsumption || '0') < consumptionRate?.value ? (
+                        <p>Consumo menor que o padrão ({consumptionRate?.value} {consumptionRate?.unit})</p>
+                      ) : parseFloat(customConsumption || '0') > consumptionRate?.value ? (
+                        <p>Consumo maior que o padrão ({consumptionRate?.value} {consumptionRate?.unit})</p>
                       ) : (
-                        <p>Espessura igual ao padrão recomendado ({defaultThickness}mm)</p>
+                        <p>Consumo igual ao padrão</p>
                       )}
                     </div>
                   </div>
                 )}
                 
                 <div className="mt-4">
-                  <div className={`p-3 rounded-lg ${getThicknessColor(parseFloat(thickness || defaultThickness.toString()))}`}>
+                  <div className={`p-3 rounded-lg ${getConsumptionVariationColor(parseFloat(customConsumption || (consumptionRate?.value || 0).toString()))}`}>
                     <p className="text-sm text-center">
-                      <strong>Atenção:</strong> O consumo aumenta proporcionalmente à espessura.
+                      <strong>Atenção:</strong> O consumo varia conforme condições do substrato e aplicação.
                     </p>
                   </div>
                 </div>
@@ -438,7 +419,7 @@ const ProductDetail = () => {
               
               {consumptionRate && (
                 <div className="bg-laticrete-gray p-3 rounded-md">
-                  <p className="text-sm">Consumo médio de <strong>{product.name}</strong>:</p>
+                  <p className="text-sm">{getConsumptionModeText()} médio de <strong>{product.name}</strong>:</p>
                   <p className="font-bold text-laticrete-blue">
                     {consumptionRate.value} {consumptionRate.unit}
                   </p>
@@ -467,29 +448,23 @@ const ProductDetail = () => {
                       <p className="font-bold">{calculationResult.area} {calculationResult.isLinear ? "m" : "m²"}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500">Consumo (padrão)</p>
+                      <p className="text-gray-500">{getConsumptionModeText()} utilizado</p>
                       <p className="font-bold">
                         {calculationResult.consumptionRate} {calculationResult.consumptionUnit}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Espessura</p>
-                      <p className="font-bold">
-                        {calculationResult.thickness} mm 
-                        {calculationResult.thickness !== defaultThickness && (
+                    {calculationResult.consumptionRate !== calculationResult.defaultConsumption && (
+                      <div className="col-span-2">
+                        <p className="text-gray-500">Ajuste de consumo</p>
+                        <p className="font-bold">
+                          {(calculationResult.consumptionRate / calculationResult.defaultConsumption).toFixed(2)}x 
                           <span className="text-xs ml-1 text-blue-600">
-                            ({calculationResult.thickness > defaultThickness ? "+" : ""}
-                            {(((calculationResult.thickness / defaultThickness) - 1) * 100).toFixed(0)}%)
+                            ({calculationResult.consumptionRate > calculationResult.defaultConsumption ? "+" : ""}
+                            {(((calculationResult.consumptionRate / calculationResult.defaultConsumption) - 1) * 100).toFixed(0)}%)
                           </span>
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Fator de ajuste</p>
-                      <p className="font-bold">
-                        {(calculationResult.thickness / defaultThickness).toFixed(2)}x
-                      </p>
-                    </div>
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="border-t pt-4">

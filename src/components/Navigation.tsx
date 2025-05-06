@@ -15,7 +15,7 @@ const Navigation: React.FC = () => {
   const { toast } = useToast();
   
   const navItems = [
-    { name: 'Produtos', path: '/' },
+    { name: 'Produtos', path: '/produtos' },
     { name: 'Carrinho', path: '/carrinho' },
     { name: 'Pedidos', path: '/pedidos' }
   ];
