@@ -2,16 +2,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { SupabaseContext } from '@/App';
-import { useContext } from 'react';
 import { LogOut, LogIn } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const Navigation: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const { supabase } = useContext(SupabaseContext);
+  const { user, logout } = useAuth();
   const { toast } = useToast();
   
   const navItems = [
@@ -21,29 +18,24 @@ const Navigation: React.FC = () => {
   ];
   
   const handleLogout = async () => {
-    if (!supabase) {
-      toast({
-        title: "Erro ao fazer logout",
-        description: "Supabase não está configurado.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     try {
-      await supabase.auth.signOut();
+      await logout();
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado com sucesso.",
       });
       navigate('/login');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao fazer logout:', error);
+      toast({
+        title: "Erro ao fazer logout",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
   const handleNavigation = (path: string) => {
-    // Navigation happens even without Supabase login
     navigate(path);
   };
   
@@ -59,7 +51,7 @@ const Navigation: React.FC = () => {
         </div>
       ))}
       
-      {supabase && user ? (
+      {user ? (
         <div 
           className="laticrete-nav-item flex items-center"
           onClick={handleLogout}

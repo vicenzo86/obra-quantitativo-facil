@@ -3,14 +3,35 @@ import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
 import ProductCard from '@/components/ProductCard';
-import { products, getCategories } from '@/data/products';
+import { products as localProducts, getCategories, Product } from '@/data/products';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getProductsFromSupabase } from '@/services/productService';
+import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const { toast } = useToast();
   
+  // Buscar produtos do Supabase
+  const { data: supabaseProducts, isLoading, error } = useQuery({
+    queryKey: ['products'],
+    queryFn: getProductsFromSupabase,
+    retry: 1,
+    onError: (error: any) => {
+      console.error('Erro ao buscar produtos:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar produtos",
+        description: "Usando dados locais como fallback."
+      });
+    }
+  });
+  
+  // Usar produtos do Supabase ou fallback para os dados locais
+  const products = supabaseProducts || localProducts;
   const categories = getCategories();
   
   const filteredProducts = products.filter(product => {
@@ -57,15 +78,30 @@ const Index = () => {
           ))}
         </div>
         
+        {isLoading && (
+          <div className="text-center py-8">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <p className="mt-2 text-gray-600">Carregando produtos...</p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="bg-red-50 p-4 rounded-md mb-4 border border-red-200">
+            <p className="text-red-700">Erro ao carregar produtos. Usando dados locais.</p>
+          </div>
+        )}
+        
         <div>
-          {filteredProducts.length > 0 ? (
+          {!isLoading && filteredProducts.length > 0 ? (
             filteredProducts.map(product => (
               <ProductCard key={product.id} product={product} />
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              Nenhum produto encontrado
-            </div>
+            !isLoading && (
+              <div className="text-center py-8 text-gray-500">
+                Nenhum produto encontrado
+              </div>
+            )
           )}
         </div>
       </div>
