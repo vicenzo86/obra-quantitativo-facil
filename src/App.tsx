@@ -36,22 +36,6 @@ const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
-// Componente ProtectedRoute que verifica autenticação
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
-  }
-  
-  // Se não houver cliente Supabase ou usuário, redireciona para login
-  if (!supabase || !user) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
 // Hook personalizado para simplificar o acesso ao contexto do Supabase
 const useAuth = () => {
   const { user, loading } = React.useContext(SupabaseContext);
@@ -60,22 +44,23 @@ const useAuth = () => {
 
 const App = () => {
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Alterado para iniciar como false para permitir acesso imediato
 
   useEffect(() => {
     // Verificar se o cliente Supabase foi inicializado
     if (!supabase) {
+      // Se não houver Supabase configurado, não bloqueamos mais o acesso
       setLoading(false);
       return;
     }
 
-    // Verificar sessão atual
+    // Verificar sessão atual apenas se Supabase estiver configurado
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
       setLoading(false);
     });
 
-    // Escutar mudanças na autenticação
+    // Escutar mudanças na autenticação apenas se Supabase estiver configurado
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user || null);
@@ -88,6 +73,20 @@ const App = () => {
     };
   }, []);
 
+  // Simulação de usuário para teste quando Supabase não está configurado
+  useEffect(() => {
+    if (!supabase) {
+      // Criar um usuário de teste fictício para permitir navegação sem Supabase
+      setUser({
+        id: 'test-user-id',
+        email: 'teste@exemplo.com',
+        user_metadata: {
+          name: 'Usuário de Teste'
+        }
+      });
+    }
+  }, []);
+
   return (
     <SupabaseContext.Provider value={{ supabase, user, loading }}>
       <QueryClientProvider client={queryClient}>
@@ -97,7 +96,7 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/" element={<Navigate to="/produtos" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/produtos" element={<Index />} />
                 <Route path="/produto/:id" element={<ProductDetail />} />
