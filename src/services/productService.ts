@@ -20,10 +20,19 @@ export const getProductsFromSupabase = async (): Promise<Product[]> => {
     // Get Supabase client
     const supabase = getSupabaseClient();
     
-    // Tentar buscar produtos do Supabase
+    // Join produtos with categorias_produtos to get category name
     const { data, error } = await supabase
-      .from('products')
-      .select('*');
+      .from('produtos')
+      .select(`
+        id,
+        nome,
+        descricao,
+        categorias_produtos (
+          id,
+          nome,
+          tipo
+        )
+      `);
     
     if (error) {
       console.error('Erro ao buscar produtos do Supabase:', error);
@@ -32,19 +41,18 @@ export const getProductsFromSupabase = async (): Promise<Product[]> => {
     
     if (!data || data.length === 0) {
       console.warn('Nenhum produto encontrado no Supabase');
-      // Retornar os dados locais como fallback
+      // Return empty array when no data found
       return [];
     }
     
-    // Mapear os dados do Supabase para o formato Product
+    // Map Supabase data to Product format
     return data.map((item: any): Product => ({
-      id: item.id.toString(),
-      name: item.name,
-      description: item.description || '',
-      category: item.category || '',
-      imageUrl: item.image_url || '/placeholder.svg',
-      // Only include properties that are in the Product type
-      // We'll add our custom properties later
+      id: item.id,
+      name: item.nome,
+      description: item.descricao || '',
+      category: item.categorias_produtos?.nome || 'Sem categoria',
+      imageUrl: '/placeholder.svg', // Default image since no image in schema
+      technicalSheet: `Ficha técnica de ${item.nome}` // Default technical sheet
     }));
   } catch (error) {
     console.error('Erro no serviço de produtos:', error);
@@ -57,9 +65,24 @@ export const getProductByIdFromSupabase = async (id: string): Promise<Product | 
     // Get Supabase client
     const supabase = getSupabaseClient();
     
+    // Get product with category info
     const { data, error } = await supabase
-      .from('products')
-      .select('*')
+      .from('produtos')
+      .select(`
+        id,
+        nome,
+        descricao,
+        categorias_produtos (
+          id,
+          nome,
+          tipo
+        ),
+        especificacoes_aplicacao (
+          espessura_mm,
+          consumo_m2_kg,
+          rendimento_m2_kg
+        )
+      `)
       .eq('id', id)
       .single();
     
@@ -72,16 +95,48 @@ export const getProductByIdFromSupabase = async (id: string): Promise<Product | 
       return null;
     }
     
+    // Map to Product type
     return {
-      id: data.id.toString(),
-      name: data.name,
-      description: data.description || '',
-      category: data.category || '',
-      imageUrl: data.image_url || '/placeholder.svg',
-      // Only include properties that are in the Product type from data/products.ts
+      id: data.id,
+      name: data.nome,
+      description: data.descricao || '',
+      category: data.categorias_produtos?.nome || 'Sem categoria',
+      imageUrl: '/placeholder.svg', // Default image since no image in schema
+      technicalSheet: `Ficha técnica de ${data.nome}`,
+      specifications: data.especificacoes_aplicacao ? {
+        thickness: data.especificacoes_aplicacao.espessura_mm,
+        consumption: data.especificacoes_aplicacao.consumo_m2_kg,
+        yield: data.especificacoes_aplicacao.rendimento_m2_kg
+      } : undefined
     };
   } catch (error) {
     console.error('Erro ao buscar produto por ID:', error);
+    throw error;
+  }
+};
+
+// Function to get product categories from Supabase
+export const getCategoriesFromSupabase = async (): Promise<string[]> => {
+  try {
+    const supabase = getSupabaseClient();
+    
+    const { data, error } = await supabase
+      .from('categorias_produtos')
+      .select('nome');
+    
+    if (error) {
+      console.error('Erro ao buscar categorias:', error);
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
+    // Extract category names
+    return data.map((category: any) => category.nome);
+  } catch (error) {
+    console.error('Erro ao buscar categorias:', error);
     throw error;
   }
 };

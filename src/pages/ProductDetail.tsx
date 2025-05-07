@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { products as localProducts, Product } from '@/data/products';
+import { products as localProducts } from '@/data/products';
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,28 +17,25 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const { toast } = useToast();
   
-  // Buscar detalhes do produto do Supabase
+  // Fetch product details from Supabase
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: () => getProductByIdFromSupabase(id || ''),
     retry: 1,
-    onSettled: (data, error) => {
-      if (error) {
-        console.error('Erro ao buscar detalhes do produto:', error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar detalhes do produto",
-          description: "Usando dados locais como fallback."
-        });
-      }
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar detalhes do produto",
+        description: "Usando dados locais como fallback."
+      });
     }
   });
 
-  // Fallback para os dados locais
+  // Fallback to local data if Supabase fails
   const localProduct = localProducts.find(p => p.id === id);
   const productData = product || localProduct;
   
-  // Adaptação para o carrinho
+  // Handle adding to cart
   const handleAddToCart = () => {
     if (productData) {
       // Create a CartItem from the Product
@@ -60,7 +57,7 @@ const ProductDetail = () => {
     }
   };
   
-  // Se não encontrar o produto nem no Supabase nem nos dados locais
+  // Handle product not found
   if (!isLoading && !productData) {
     return (
       <div className="laticrete-app-container">
@@ -137,7 +134,32 @@ const ProductDetail = () => {
                   <h2 className="text-xl font-bold mb-2">Categoria</h2>
                   <p className="text-gray-700 mb-4">{productData.category}</p>
                   
-                  {/* Display dynamic product details conditionally */}
+                  {/* Display specifications if available */}
+                  {productData.specifications && (
+                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                      <h2 className="text-xl font-bold mb-2">Especificações Técnicas</h2>
+                      <div className="grid grid-cols-2 gap-4">
+                        {productData.specifications.thickness && (
+                          <div>
+                            <p className="text-sm text-gray-500">Espessura</p>
+                            <p className="font-medium">{productData.specifications.thickness} mm</p>
+                          </div>
+                        )}
+                        {productData.specifications.consumption && (
+                          <div>
+                            <p className="text-sm text-gray-500">Consumo</p>
+                            <p className="font-medium">{productData.specifications.consumption} kg/m²</p>
+                          </div>
+                        )}
+                        {productData.specifications.yield && (
+                          <div>
+                            <p className="text-sm text-gray-500">Rendimento</p>
+                            <p className="font-medium">{productData.specifications.yield} m²/kg</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

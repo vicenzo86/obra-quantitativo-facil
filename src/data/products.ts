@@ -7,6 +7,11 @@ export interface Product {
   imageUrl: string;
   technicalSheet: string;
   components?: ProductComponent[];
+  specifications?: {
+    thickness?: number;  // espessura_mm
+    consumption?: number; // consumo_m2_kg
+    yield?: number; // rendimento_m2_kg
+  };
 }
 
 export interface ProductComponent {

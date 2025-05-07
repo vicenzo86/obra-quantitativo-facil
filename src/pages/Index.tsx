@@ -3,11 +3,11 @@ import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
 import ProductCard from '@/components/ProductCard';
-import { products as localProducts, getCategories, Product } from '@/data/products';
+import { products as localProducts, getCategories } from '@/data/products';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getProductsFromSupabase } from '@/services/productService';
+import { getProductsFromSupabase, getCategoriesFromSupabase } from '@/services/productService';
 import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
@@ -15,26 +15,31 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const { toast } = useToast();
   
-  // Buscar produtos do Supabase
-  const { data: supabaseProducts, isLoading, error } = useQuery({
+  // Fetch products from Supabase
+  const { data: supabaseProducts, isLoading: isLoadingProducts, error: productsError } = useQuery({
     queryKey: ['products'],
     queryFn: getProductsFromSupabase,
     retry: 1,
-    onSettled: (data, error) => {
-      if (error) {
-        console.error('Erro ao buscar produtos:', error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao carregar produtos",
-          description: "Usando dados locais como fallback."
-        });
-      }
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar produtos",
+        description: "Usando dados locais como fallback."
+      });
     }
   });
   
-  // Usar produtos do Supabase ou fallback para os dados locais
+  // Fetch categories from Supabase
+  const { data: supabaseCategories, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: getCategoriesFromSupabase,
+    retry: 1
+  });
+  
+  // Use products from Supabase or fallback to local data
   const products = supabaseProducts || localProducts;
-  const categories = getCategories();
+  // Use categories from Supabase or fallback to local data
+  const categories = supabaseCategories || getCategories();
   
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -42,6 +47,8 @@ const Index = () => {
     const matchesCategory = selectedCategory === '' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+  
+  const isLoading = isLoadingProducts || isLoadingCategories;
   
   return (
     <div className="laticrete-app-container">
@@ -69,7 +76,7 @@ const Index = () => {
           >
             Todos
           </button>
-          {categories.map(category => (
+          {categories && categories.map(category => (
             <button 
               key={category}
               className={`px-3 py-1 text-sm rounded-full ${selectedCategory === category ? 'bg-laticrete-blue text-white' : 'bg-gray-200'}`}
@@ -87,7 +94,7 @@ const Index = () => {
           </div>
         )}
         
-        {error && (
+        {productsError && (
           <div className="bg-red-50 p-4 rounded-md mb-4 border border-red-200">
             <p className="text-red-700">Erro ao carregar produtos. Usando dados locais.</p>
           </div>
