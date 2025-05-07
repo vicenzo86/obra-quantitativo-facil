@@ -22,7 +22,10 @@ const ProductDetail = () => {
     queryKey: ['product', id],
     queryFn: () => getProductByIdFromSupabase(id || ''),
     retry: 1,
-    onError: (error) => {
+    onSuccess: () => {
+      console.log('Detalhes do produto carregados com sucesso');
+    },
+    onError: () => {
       toast({
         variant: "destructive",
         title: "Erro ao carregar detalhes do produto",

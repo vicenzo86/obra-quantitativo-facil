@@ -77,7 +77,7 @@ export const getProductByIdFromSupabase = async (id: string): Promise<Product | 
           nome,
           tipo
         ),
-        especificacoes:especificacoes_aplicacao!inner (
+        especificacoes:especificacoes_aplicacao(
           espessura_mm,
           consumo_m2_kg,
           rendimento_m2_kg
@@ -95,7 +95,7 @@ export const getProductByIdFromSupabase = async (id: string): Promise<Product | 
       return null;
     }
     
-    // Map to Product type
+    // Map to Product type with proper handling of specifications
     return {
       id: data.id,
       name: data.nome,
@@ -103,11 +103,11 @@ export const getProductByIdFromSupabase = async (id: string): Promise<Product | 
       category: data.categorias_produtos?.nome || 'Sem categoria',
       imageUrl: '/placeholder.svg', // Default image since no image in schema
       technicalSheet: `Ficha técnica de ${data.nome}`,
-      specifications: {
-        thickness: data.especificacoes?.espessura_mm,
-        consumption: data.especificacoes?.consumo_m2_kg,
-        yield: data.especificacoes?.rendimento_m2_kg
-      }
+      specifications: data.especificacoes && data.especificacoes.length > 0 ? {
+        thickness: data.especificacoes[0].espessura_mm,
+        consumption: data.especificacoes[0].consumo_m2_kg,
+        yield: data.especificacoes[0].rendimento_m2_kg
+      } : undefined
     };
   } catch (error) {
     console.error('Erro ao buscar produto por ID:', error);

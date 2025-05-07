@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
@@ -20,7 +19,10 @@ const Index = () => {
     queryKey: ['products'],
     queryFn: getProductsFromSupabase,
     retry: 1,
-    onError: (error) => {
+    onSuccess: () => {
+      console.log('Produtos carregados com sucesso');
+    },
+    onError: () => {
       toast({
         variant: "destructive",
         title: "Erro ao carregar produtos",
@@ -101,12 +103,19 @@ const Index = () => {
         )}
         
         <div>
-          {!isLoading && filteredProducts.length > 0 ? (
-            filteredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))
+          {!isLoadingProducts && products.length > 0 ? (
+            products
+              .filter(product => {
+                const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                      product.description.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesCategory = selectedCategory === '' || product.category === selectedCategory;
+                return matchesSearch && matchesCategory;
+              })
+              .map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))
           ) : (
-            !isLoading && (
+            !isLoadingProducts && (
               <div className="text-center py-8 text-gray-500">
                 Nenhum produto encontrado
               </div>
