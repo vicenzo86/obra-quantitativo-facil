@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
@@ -19,9 +20,6 @@ const Index = () => {
     queryKey: ['products'],
     queryFn: getProductsFromSupabase,
     retry: 1,
-    onSuccess: () => {
-      console.log('Produtos carregados com sucesso');
-    },
     onError: () => {
       toast({
         variant: "destructive",

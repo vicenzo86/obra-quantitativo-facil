@@ -22,9 +22,6 @@ const ProductDetail = () => {
     queryKey: ['product', id],
     queryFn: () => getProductByIdFromSupabase(id || ''),
     retry: 1,
-    onSuccess: () => {
-      console.log('Detalhes do produto carregados com sucesso');
-    },
     onError: () => {
       toast({
         variant: "destructive",
