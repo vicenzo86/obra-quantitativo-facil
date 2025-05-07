@@ -22,12 +22,14 @@ const ProductDetail = () => {
     queryKey: ['product', id],
     queryFn: () => getProductByIdFromSupabase(id || ''),
     retry: 1,
-    onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar detalhes do produto",
-        description: "Usando dados locais como fallback."
-      });
+    onSettled: (_, error) => {
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar detalhes do produto",
+          description: "Usando dados locais como fallback."
+        });
+      }
     }
   });
 
