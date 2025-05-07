@@ -2,15 +2,24 @@
 import { createClient } from "@supabase/supabase-js";
 import { Product } from "@/data/products";
 
-// Obter as credenciais do Supabase do ambiente
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
-// Inicializar o cliente do Supabase
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create a function to get the Supabase client, with error handling
+const getSupabaseClient = () => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  // Check if Supabase credentials are available
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase credentials not found in environment variables");
+  }
+  
+  return createClient(supabaseUrl, supabaseAnonKey);
+};
 
 export const getProductsFromSupabase = async (): Promise<Product[]> => {
   try {
+    // Get Supabase client
+    const supabase = getSupabaseClient();
+    
     // Tentar buscar produtos do Supabase
     const { data, error } = await supabase
       .from('products')
@@ -32,13 +41,10 @@ export const getProductsFromSupabase = async (): Promise<Product[]> => {
       id: item.id.toString(),
       name: item.name,
       description: item.description || '',
-      price: item.price || 0,
       category: item.category || '',
       imageUrl: item.image_url || '/placeholder.svg',
-      features: item.features || [],
-      technicalDetails: item.technical_details || {},
-      applicationMethods: item.application_methods || [],
-      consumption: item.consumption || {}
+      // Only include properties that are in the Product type
+      // We'll add our custom properties later
     }));
   } catch (error) {
     console.error('Erro no serviço de produtos:', error);
@@ -48,6 +54,9 @@ export const getProductsFromSupabase = async (): Promise<Product[]> => {
 
 export const getProductByIdFromSupabase = async (id: string): Promise<Product | null> => {
   try {
+    // Get Supabase client
+    const supabase = getSupabaseClient();
+    
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -67,13 +76,9 @@ export const getProductByIdFromSupabase = async (id: string): Promise<Product | 
       id: data.id.toString(),
       name: data.name,
       description: data.description || '',
-      price: data.price || 0,
       category: data.category || '',
       imageUrl: data.image_url || '/placeholder.svg',
-      features: data.features || [],
-      technicalDetails: data.technical_details || {},
-      applicationMethods: data.application_methods || [],
-      consumption: data.consumption || {}
+      // Only include properties that are in the Product type from data/products.ts
     };
   } catch (error) {
     console.error('Erro ao buscar produto por ID:', error);

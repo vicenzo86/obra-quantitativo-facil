@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -27,14 +26,26 @@ export const SupabaseContext = createContext<{
 
 const queryClient = new QueryClient();
 
-// Preparar conexão com Supabase - será configurado quando o usuário fornecer as credenciais
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+// Safe way to get Supabase client
+const getSupabaseClient = () => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("Supabase credentials not found. Using mock authentication.");
+    return null;
+  }
+  
+  try {
+    return createClient(supabaseUrl, supabaseAnonKey);
+  } catch (error) {
+    console.error("Failed to initialize Supabase client:", error);
+    return null;
+  }
+};
 
-// Inicializa o cliente Supabase apenas se as credenciais existirem
-const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
-  : null;
+// Initialize Supabase client safely
+const supabase = getSupabaseClient();
 
 // Hook personalizado para simplificar o acesso ao contexto do Supabase
 const useAuth = () => {

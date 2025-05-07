@@ -20,13 +20,15 @@ const Index = () => {
     queryKey: ['products'],
     queryFn: getProductsFromSupabase,
     retry: 1,
-    onError: (error: any) => {
-      console.error('Erro ao buscar produtos:', error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar produtos",
-        description: "Usando dados locais como fallback."
-      });
+    onSettled: (data, error) => {
+      if (error) {
+        console.error('Erro ao buscar produtos:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar produtos",
+          description: "Usando dados locais como fallback."
+        });
+      }
     }
   });
   
